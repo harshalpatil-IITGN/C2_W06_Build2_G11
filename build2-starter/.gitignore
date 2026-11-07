@@ -1,0 +1,7 @@
+# Made by running the code, so never committed: the downloaded bookings. The saved model in models/ is committed.
+/data/
+
+# Made by Python, Jupyter and pytest on every run.
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/

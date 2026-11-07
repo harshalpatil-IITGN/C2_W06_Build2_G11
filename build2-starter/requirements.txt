@@ -1,0 +1,9 @@
+# Every version below was read on pypi.org on 29 October 2026 and installs on Python 3.12,
+# the version .devcontainer/devcontainer.json opens. Pinned, so every team runs the same code.
+pandas==3.0.6         # tables
+numpy==2.5.4          # the numbers under pandas and scikit-learn
+scikit-learn==1.9.1   # splits, models and metrics
+matplotlib==3.11.2    # charts for your slides and your evidence folder
+joblib==1.6.0         # saves and loads a fitted model
+pytest==9.1.1         # runs tests/
+ipykernel==7.4.0      # lets VS Code run notebooks
