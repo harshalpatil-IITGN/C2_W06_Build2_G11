@@ -16,4 +16,4 @@ Two tables. The first is the Week 1 decisions log for the data: every cleaning o
 
 | Date | Artifact | Decision or objection | Raised by | Answer, within 15 minutes | Settled by |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-11-08 | docs/ROLES.md | Role assignments: Harshal (Client Lead), Gurunath (Data Lead), Vysag (Model Lead), Mihir (Build Lead). Challenger pairs: Client ↔ Model, Data ↔ Build. | Harshal | Agreed by consensus. Assignment logged and locked for the week. | Team consensus |
