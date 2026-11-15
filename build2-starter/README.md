@@ -32,20 +32,20 @@ A challenger signs by writing the commit hash they checked. An artifact counts a
 
 | Artifact | Owner | Challenger | Signed at commit |
 |---|---|---|---|
-| `docs/CHARTER.md` and `docs/RFP.md` | | | |
-| `docs/COLUMNS.md` and `src/features.py` | | | |
-| `src/backtest.py` | | | |
-| `docs/PRD.md`, `docs/BUILD_PLAN.md` and `src/nightly.py` | | | |
-| `docs/COMPARISON.md` | | | |
+| `docs/CHARTER.md` and `docs/RFP.md` | Harshal (Client Lead) | Vysag (Model Lead) | |
+| `docs/COLUMNS.md` and `src/features.py` | Gurunath (Data Lead) | Mihir (Build Lead) | |
+| `src/backtest.py` | Vysag (Model Lead) | Harshal (Client Lead) | |
+| `docs/PRD.md`, `docs/BUILD_PLAN.md` and `src/nightly.py` | Mihir (Build Lead) | Gurunath (Data Lead) | |
+| `docs/COMPARISON.md` | Gurunath (Data Lead) | Mihir (Build Lead) | |
 
 ## Where are our recordings?
 
 | Member | Role | Recording link on the LMS |
 |---|---|---|
-| | Client Lead | |
-| | Data Lead | |
-| | Model Lead | |
-| | Build Lead | |
+| Harshal | Client Lead | |
+| Gurunath | Data Lead | |
+| Vysag | Model Lead | |
+| Mihir | Build Lead | |
 
 ## Where does the data come from?
 
