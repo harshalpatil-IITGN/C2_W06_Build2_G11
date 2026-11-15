@@ -1,0 +1,5 @@
+Method,Buffer b*,Empty Rooms,Walked Guests,"Walks/1,000",Total Cost (EUR),Savings (EUR),Ceiling Met
+Client Flat Rule,16,8050,167,6.7,3882948.76,0.0,True
+Lookup Table,32,11255,290,11.63,5170126.89,-1287178.13,False
+Logistic Regression,-4,4704,214,8.58,2341745.25,1541203.5099999998,True
+Gradient Boosting,-1,3032,248,9.94,1619619.1,2263329.6599999997,True
