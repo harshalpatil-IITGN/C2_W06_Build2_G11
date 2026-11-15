@@ -8,7 +8,11 @@ Two tables. The first is the Week 1 decisions log for the data: every cleaning o
 
 | Date | Decision | Reason, with the number that justified it | Rows touched | Logged by |
 |---|---|---|---|---|
-| | | | | |
+| 2026-11-14 | Impute missing `children` with 0 | Only 4 bookings lacked children counts; default assumption is zero minor dependents. | 4 | Gurunath (Data Lead) |
+| 2026-11-14 | Impute missing `country` with 'Unknown' | 488 bookings lacked country codes; assigning explicit category retains full book without dropping rows. | 488 | Gurunath (Data Lead) |
+| 2026-11-14 | Clip negative ADR to 0.0 | 1 booking had an erroneous rate of -6.38 (refund adjustment); price cannot be negative. | 1 | Gurunath (Data Lead) |
+| 2026-11-14 | Retain zero-guest phantom bookings | 180 bookings recorded 0 adults, 0 children, and 0 babies; retained because evaluation contract scores all exported bookings. | 180 | Gurunath (Data Lead) |
+| 2026-11-14 | Restrict model training matrix strictly to Bin 1 features | Quarantining Bin 2 and Bin 3 columns (`assigned_room_type`, `booking_changes`, `reservation_status`) eliminates lookahead leakage (which falsely inflates AUC to 0.8416). | 119,390 | Gurunath (Data Lead) |
 
 ## Which team decisions and objections did we log?
 
