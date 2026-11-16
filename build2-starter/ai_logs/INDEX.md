@@ -9,3 +9,4 @@
 | `karpathy_effect.md` (required) | Build Lead | | `AGENTS.md` | | |
 | AI benchmark chat (required) | Data Lead | | `ai-benchmark` branch | | |
 | `20261111_model-lead_claude_planning.md` | Model Lead | Claude | `docs/DECISIONS.md`, `src/backtest.py` | Commit plan, review method | Pre-made Data Lead files |
+| 2026-11-17 | Model Lead (Vysag) | Gemini | Audited Bin 1 features, fixed Choose-split model selection + AUC/MAE (`388de3e`), added nightly volatility status (`3a500b6`) | `ai_logs/20261117_model-lead_gemini_audit-and-build.md` |
