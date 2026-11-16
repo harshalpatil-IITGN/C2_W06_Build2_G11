@@ -50,12 +50,21 @@ Each active booking receives a cancellation probability $p_i$ from the model tra
 
 _Euros, rooms and walks per 1,000 for the chosen rule and for the client's flat rule, from `python src/backtest.py`._
 
+<!-- Previous proof table before Choose-period selection & Bin 1 special requests alignment:
 | Rule | Empty rooms | Walked guests | Walks per 1,000 | Cost (EUR) | Saving a month against the flat rule (EUR) |
 |---|---|---|---|---|---|
 | Client's flat rule | 8,050 | 167 | 6.70 | €3,882,948.76 | €0.00 |
 | Our chosen rule (Gradient Boosting, $b^* = -1$) | 3,032 | 248 | 9.94 | €1,619,619.10 | €282,916.21 |
 
 *(Proved on 40,687 bookings across January 1 – August 31, 2017. Total 8-month net saving: **€2,263,329.66** under the brand ceiling of $\le 10.0$ walks per 1,000 arrivals).*
+-->
+| Rule | Empty rooms | Walked guests | Walks per 1,000 | Cost (EUR) | Saving a month against the flat rule (EUR) |
+|---|---|---|---|---|---|
+| Client's flat rule ($b^* = 16$) | 8,050 | 167 | 6.70 | €3,882,948.76 | €0.00 |
+| Logistic Regression ($b^* = -3$, AUC `0.823`) | 4,400 | 182 | 7.30 | €2,155,250.35 | €215,962.30 |
+| Gradient Boosting ($b^* = -2$, AUC `0.819` — Choose winner, Proof ceiling breached) | 3,024 | 308 | 12.35 | €1,681,633.90 | €275,164.36 (REJECTED: >10 walks/1k) |
+
+*(Proved on 40,687 bookings across January 1 – August 31, 2017 after enforcing strict Choose-period selection and Bin 1 `total_of_special_requests` alignment).*
 
 ### 8. What does the system look like, first as a black box and then inside?
 
