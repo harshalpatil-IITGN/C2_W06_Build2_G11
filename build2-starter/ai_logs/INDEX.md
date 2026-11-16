@@ -8,3 +8,4 @@
 | Grill run 2 (required) | Build Lead | | `docs/grill_02_prd.md` | | |
 | `karpathy_effect.md` (required) | Build Lead | | `AGENTS.md` | | |
 | AI benchmark chat (required) | Data Lead | | `ai-benchmark` branch | | |
+| `20261111_model-lead_claude_planning.md` | Model Lead | Claude | `docs/DECISIONS.md`, `src/backtest.py` | Commit plan, review method | Pre-made Data Lead files |
