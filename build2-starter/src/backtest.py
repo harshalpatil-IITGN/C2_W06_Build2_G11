@@ -1,10 +1,10 @@
 """Backtesting engine and multi-method evaluation comparison.
 
 Owner: Model Lead (Vysag).
-Job: Train candidate models on the train period (< July 2016), tune safety buffers on the
-choose period (July-Dec 2016) to satisfy the walk ceiling (<= 10 / 1,000 arrivals),
-evaluate strictly ONCE on the proof period (Jan-Aug 2017), print the comparative method table,
-and save the chosen winning model and its frozen buffer to models/chosen_model.joblib.
+Job: Train candidate models on the train period (< July 2016), tune safety buffers and
+select the winning model on the choose period (July-Dec 2016) under the walk ceiling
+(<= 10 / 1,000 arrivals), evaluate strictly ONCE on the proof period (Jan-Aug 2017),
+print the comparative method table, and save the chosen model to models/chosen_model.joblib.
 
 Run via:
     python src/backtest.py
@@ -17,14 +17,14 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.metrics import roc_auc_score, mean_absolute_error
 
-# Add src to system path
 SRC_DIR = pathlib.Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from data import read_raw
-from contract import split_periods, nightly_table, night_cost, WALK_CEILING
+from contract import split_periods, nightly_table, night_cost
 from features import clean_bookings, get_bin1_features, build_preprocessor
 
 MODELS_DIR = SRC_DIR.parent / "models"
@@ -33,9 +33,9 @@ CHOSEN_MODEL_PATH = MODELS_DIR / "chosen_model.joblib"
 
 
 def run_backtest():
-    print("=" * 80)
+    print("=" * 125)
     print("BUILD 2 · REVENUE SCIENCE SQUAD · MODEL EVALUATION & BACKTEST")
-    print("=" * 80)
+    print("=" * 125)
 
     # 1. Load and prepare data
     print("\n[1/5] Loading historical bookings and enforcing chronological splits...")
@@ -55,14 +55,12 @@ def run_backtest():
 
     X_choose = preprocessor.transform(get_bin1_features(choose_df))
     X_proof = preprocessor.transform(get_bin1_features(proof_df))
+    y_proof = proof_df["is_canceled"].values
 
     # 3. Fit Candidate Models on Train Split
     print("\n[3/5] Fitting candidate models on Train split...")
-
-    # Method 1: Client's Flat Rule (baseline historical rates per hotel)
     hotel_rates = train_df.groupby("hotel")["is_canceled"].mean().to_dict()
 
-    # Method 2: Empirical Lookup Table (hotel x month x market_segment)
     lookup = train_df.groupby(["hotel", "arrival_date_month", "market_segment"])["is_canceled"].mean()
     overall_rate = train_df["is_canceled"].mean()
 
@@ -70,22 +68,19 @@ def run_backtest():
         keys = list(zip(sub_df["hotel"], sub_df["arrival_date_month"], sub_df["market_segment"]))
         return np.array([lookup.get(k, overall_rate) for k in keys])
 
-    # Method 3: Calibrated Logistic Regression
     print("      Fitting Method 3: Logistic Regression...")
     lr_model = LogisticRegression(max_iter=1000, random_state=42)
     lr_model.fit(X_train, y_train)
 
-    # Method 4: Non-linear Tree Ensemble (HistGradientBoosting)
     print("      Fitting Method 4: HistGradientBoosting Ensemble...")
     hgb_model = HistGradientBoostingClassifier(random_state=42, max_iter=100)
     hgb_model.fit(X_train, y_train)
 
-    # Generate probabilities
     methods = {
         "Client Flat Rule": {
             "choose_p": np.array([hotel_rates[h] for h in choose_df["hotel"]]),
             "proof_p": np.array([hotel_rates[h] for h in proof_df["hotel"]]),
-            "model_obj": None,
+            "model_obj": hotel_rates,
         },
         "Lookup Table": {
             "choose_p": lookup_predict(choose_df),
@@ -104,9 +99,9 @@ def run_backtest():
         },
     }
 
-    # 4. Tune Safety Buffers on Choose Period
-    print("\n[4/5] Tuning safety buffers on Choose split (minimizing € loss under <= 10 walks/1,000)...")
-    tuned_buffers = {}
+    # 4. Tune Safety Buffers & Pick Winner on Choose Period
+    print("\n[4/5] Tuning safety buffers on Choose split (minimizing EUR loss under <= 10 walks/1,000)...")
+    choose_summary = {}
     for name, data in methods.items():
         table_ch = nightly_table(choose_df, data["choose_p"])
         best_cost = float("inf")
@@ -119,61 +114,73 @@ def run_backtest():
                 best_cost = res["cost_eur"]
                 best_b = b
                 best_res = res
-        tuned_buffers[name] = best_b
-        print(f"      {name:<22} -> Optimal Buffer b* = {best_b:>2} (Choose Cost: €{best_res['cost_eur']:>10,}, Walks/1k: {best_res['walks_per_1000']:>4.2f})")
+        choose_summary[name] = {
+            "buffer": best_b,
+            "choose_cost": best_cost,
+            "choose_res": best_res,
+        }
+        print(
+            f"      {name:<22} -> Buffer b* = {best_b:>2} "
+            f"(Choose Cost: EUR {best_res['cost_eur']:>10,.2f}, Walks/1k: {best_res['walks_per_1000']:>4.2f})"
+        )
+
+    winner_name = min(choose_summary.keys(), key=lambda m: choose_summary[m]["choose_cost"])
+    winner_buffer = choose_summary[winner_name]["buffer"]
 
     # 5. Score Proof Period ONCE with Frozen Buffers
     print("\n[5/5] Scoring Proof Period ONCE with frozen models and buffers...")
-    results = []
-    flat_cost = None
-
+    raw_results = []
     for name, data in methods.items():
-        b_star = tuned_buffers[name]
+        b_star = choose_summary[name]["buffer"]
         table_pr = nightly_table(proof_df, data["proof_p"])
         k_pr = np.maximum(0, np.round(table_pr["expected"] - b_star))
         res_pr = night_cost(table_pr, k_pr)
 
-        if name == "Client Flat Rule":
-            flat_cost = res_pr["cost_eur"]
+        auc_score = roc_auc_score(y_proof, data["proof_p"])
+        mae_rooms = mean_absolute_error(table_pr["cancelled"], table_pr["expected"])
 
-        savings = flat_cost - res_pr["cost_eur"] if flat_cost is not None else 0.0
-
-        results.append({
+        raw_results.append({
             "Method": name,
             "Buffer b*": b_star,
+            "AUC": auc_score,
+            "MAE (Rooms)": mae_rooms,
             "Empty Rooms": res_pr["empty_rooms"],
             "Walked Guests": res_pr["walked_guests"],
             "Walks/1,000": res_pr["walks_per_1000"],
             "Total Cost (EUR)": res_pr["cost_eur"],
-            "Savings (EUR)": savings,
             "Ceiling Met": res_pr["ceiling_met"],
         })
 
-    results_df = pd.DataFrame(results)
+    flat_cost = next(r["Total Cost (EUR)"] for r in raw_results if r["Method"] == "Client Flat Rule")
+    for r in raw_results:
+        r["Savings (EUR)"] = flat_cost - r["Total Cost (EUR)"]
 
-    # Print Table
-    print("\n" + "=" * 105)
-    print("PROVED RESULTS TABLE (Held-Out Proof Period: Jan 1 – Aug 31, 2017)")
-    print("=" * 105)
-    print(f"{'Method':<22} | {'Buffer':<6} | {'Empty':<6} | {'Walks':<6} | {'Walks/1k':<8} | {'Cost (EUR)':<14} | {'Savings (EUR)':<14} | {'Ceiling'}")
-    print("-" * 105)
+    results_df = pd.DataFrame(raw_results)
+
+    print("\n" + "=" * 125)
+    print("PROVED RESULTS TABLE (Held-Out Proof Period: Jan 1 - Aug 31, 2017)")
+    print("=" * 125)
+    print(
+        f"{'Method':<21} | {'Buf':>4} | {'AUC':>6} | {'MAE':>5} | {'Empty':>6} | "
+        f"{'Walks':>5} | {'Walks/1k':>8} | {'Cost (EUR)':>13} | {'Savings (EUR)':>13} | {'Ceiling'}"
+    )
+    print("-" * 125)
     for _, r in results_df.iterrows():
-        met_str = "PASS (<=10)" if r['Ceiling Met'] else "REJECTED (>10)"
-        print(f"{r['Method']:<22} | {r['Buffer b*']:>6} | {r['Empty Rooms']:>6,d} | {r['Walked Guests']:>6,d} | {r['Walks/1,000']:>8.2f} | €{r['Total Cost (EUR)']:>12,.2f} | €{r['Savings (EUR)']:>12,.2f} | {met_str}")
-    print("=" * 105)
+        met_str = "PASS (<=10)" if r["Ceiling Met"] else "REJECT (>10)"
+        print(
+            f"{r['Method']:<21} | {r['Buffer b*']:>4} | {r['AUC']:>6.3f} | {r['MAE (Rooms)']:>5.2f} | "
+            f"{r['Empty Rooms']:>6,d} | {r['Walked Guests']:>5,d} | {r['Walks/1,000']:>8.2f} | "
+            f"EUR {r['Total Cost (EUR)']:>9,.2f} | EUR {r['Savings (EUR)']:>9,.2f} | {met_str}"
+        )
+    print("=" * 125)
 
-    # Choose winning model: Lowest cost among those that met ceiling on Proof
-    eligible = [r for r in results if r["Ceiling Met"]]
-    winner = min(eligible, key=lambda x: x["Total Cost (EUR)"])
-    winner_name = winner["Method"]
-    winner_buffer = winner["Buffer b*"]
+    winner = next(r for r in raw_results if r["Method"] == winner_name)
+    print(f"\nCHOSEN ON 2016 H2 & PROVED ON 2017: {winner_name} (Buffer b* = {winner_buffer})")
+    print(f"        Proof Cost:   EUR {winner['Total Cost (EUR)']:,.2f}")
+    print(f"        Net Savings:  EUR {winner['Savings (EUR)']:,.2f} over flat rule (EUR {winner['Savings (EUR)'] / 8:,.2f} / month)")
+    print(f"        Walk Rate:    {winner['Walks/1,000']:.2f} per 1,000 arrivals (Ceiling <= 10.0: {'PASS' if winner['Ceiling Met'] else 'BREACHED'})")
 
-    print(f"\nWINNER: {winner_name} (Buffer b* = {winner_buffer})")
-    print(f"        Proof Cost:   €{winner['Total Cost (EUR)']:,.2f}")
-    print(f"        Net Savings:  €{winner['Savings (EUR)']:,.2f} over the flat rule ({winner['Savings (EUR)'] / 8:,.2f} / month)")
-    print(f"        Walk Rate:    {winner['Walks/1,000']:.2f} per 1,000 arrivals (Brand ceiling <= 10.0 PASSED)")
-
-    # 6. Save chosen model and artifacts to models/
+    # 6. Save chosen model and artifacts
     chosen_package = {
         "model_name": winner_name,
         "model": methods[winner_name]["model_obj"],
@@ -185,7 +192,6 @@ def run_backtest():
     joblib.dump(chosen_package, CHOSEN_MODEL_PATH)
     print(f"\n[OK] Chosen model and frozen buffer exported to: {CHOSEN_MODEL_PATH}")
 
-    # Also save results table to evidence/
     evidence_dir = SRC_DIR.parent / "evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     results_df.to_csv(evidence_dir / "backtest_results.csv", index=False)
