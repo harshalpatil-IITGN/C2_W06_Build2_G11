@@ -1,15 +1,22 @@
-# Which questions did the grilling ask about the PRD and the build plan, and what changed?
+# Grilling Run 2: PRD, Build Plan & Operational Delivery
 
-**Owner:** Build Lead. **When:** Thursday, 45 minutes of grilling and then the edits. **Tool used:** _write it here_. **Full chat:** the file in `ai_logs/` it came from.
+**Owner:** Build Lead (Mihir Patel). **When:** Thursday build cycle. **Tool used:** Claude / Antigravity. **Full chat:** [`ai_logs/20261112_build-lead_claude_grill-prd.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/ai_logs/20261112_build-lead_claude_grill-prd.md).
 
-Write your own answer before you read the AI's recommended answer. When you accept a recommendation, say why in the last column. At least three rows must show a change to a document.
+---
+
+## Grilling Questions, Answers & Document Changes
 
 | Q | Question, as asked | AI's recommended answer | Our answer | Accepted, changed or rejected | What changed, in which document |
 |---|---|---|---|---|---|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
+| **1** | *"Your PRD says you achieve higher AUC when including Bin 2 features like `booking_changes` and `days_in_waiting_list`. Why did you exclude them from `nightly.py` if they make your predictions sharper?"* | Accept the features but add an event timestamp filter to only look back at changes made $> 24$ hours prior to arrival. | We strictly reject Bin 2 from nightly inference because the raw feed is a static snapshot, not an append-only event log. In a live morning run, changes logged on check-in day would leak future state into morning decisions. Zero leakage is worth more than synthetic offline AUC gains. | **Accepted AI challenge, rejected AI workaround** (enforced strict zero-leakage policy). | Added strict Bin 1 feature barrier in [`docs/PRD.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/docs/PRD.md#L45-L60) Section 4 and added Cut explanation in [`docs/BUILD_PLAN.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/docs/BUILD_PLAN.md#L25-L35). |
+| **2** | *"Your contract scores nights independently. If a guest books 5 nights and cancels, you get 5 empty room nights, but your model only oversells on the arrival night. Doesn't that leave the shoulder nights empty?"* | Build a multi-night stay matrix in `nightly.py` that projects future room-night occupancy across a 7-day lookahead window. | We acknowledge this contract scope limitation in Section 8 of the PRD. The contractual evaluation unit is strictly hotel-arrival night. Trying to solve multi-night joint optimization within a 5-day build introduces unverified network assumptions. We deliver a verified single-night MVP and place multi-night dynamic programming in the post-Week 6 roadmap. | **Changed** (refined scope boundary and financial impact caveats). | Documented multi-night stay caveat with empirical length-of-stay distribution in [`docs/PRD.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/docs/PRD.md) Section 8 and added Week 9 milestone in [`docs/ROADMAP.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/docs/ROADMAP.md#L10-L15). |
+| **3** | *"In your backtest, the Client Flat Rule has an optimal buffer $b^* = +16$, but Gradient Boosting has $b^* = -1$. How can you justify a negative safety buffer to hotel general managers who think buffers must always be positive?"* | Force $b \ge 0$ in the grid search to ensure the buffer is intuitive to non-technical stakeholders, even if it leaves money on the table. | We reject forcing $b \ge 0$. Machine learning models produce well-calibrated, sharp probabilities $\sum p_i$. Because the €300 walk penalty is asymmetrical compared to the average stay loss (€100–€150), an under-confident model requires a negative buffer ($k > \sum p_i$) to fully monetize cancellations while still strictly satisfying the brand ceiling (9.94 walks/1k $\le 10.0$). We educate the client that $b^*$ is an asymmetric loss calibrator, not a seatbelt. | **Accepted AI challenge, rejected forced constraint** (kept optimal mathematical tuning). | Added mathematical explanation of negative buffer mechanics in [`docs/DESIGN_RATIONALE_AND_DEFENSE.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/docs/DESIGN_RATIONALE_AND_DEFENSE.md) and PRD Section 7. |
+| **4** | *"What happens on a morning when `nightly.py` fails due to a corrupt CSV file, missing dependencies, or server outage? What is the front desk manager's fallback?"* | Deploy a dockerized container with automated restart policies and cloud fallback. | We implemented an operational fallback hierarchy in `nightly.py`: if model inference fails, the system automatically falls back to Method 1 (Client Flat Rule with $b^* = 16$), which requires only the booking count and hotel name. The desk is never left without a recommendation, and the fallback is guaranteed to pass the brand ceiling (6.70 walks/1k). | **Accepted** (added explicit graceful degradation). | Added graceful degradation operational protocol in [`docs/BUILD_PLAN.md`](file:///e:/IITGN_Projects/Week_6/C2_W06_Build2_G4/build2-starter/docs/BUILD_PLAN.md) and documented fallback logic in `AGENTS.md`. |
 
-## What did we learn from being grilled?
+---
 
-_Three sentences: the question that hurt most, what it exposed, and what we now do differently._
+## What Did We Learn From Being Grilled?
+
+1. **The question that hurt most:** Question 3 on why our winning model has a negative safety buffer ($b^* = -1$) while the client's baseline is $+16$.
+2. **What it exposed:** It exposed that "safety buffer" is a confusing term to business stakeholders—General Managers equate "buffer" with a physical margin of safety that must subtract from risk, rather than an asymmetric loss calibrator between a €300 walk cost and a €150 empty room loss.
+3. **What we now do differently:** In our slide deck and client documentation, we explicitly present $b^*$ as the **"Asymmetric Loss Offset"** and demonstrate that it directly controls the balance between empty room spoilage and walk penalties while proving empirical compliance with the 10.0 walk ceiling.
