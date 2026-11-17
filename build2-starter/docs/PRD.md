@@ -32,12 +32,26 @@ The marketing team's wish-list item ("finding hidden guest types") requires an u
 **Our answer:**
 One row per hotel and arrival night across the next 14 nights: arrival date, hotel, active booked rooms, expected cancellations ($\sum p_i$), safety buffer ($b$), recommended oversell rooms ($k = \max(0, \text{round}(\mu - b))$), and a one-line volatility status based on the night's spread ($\sigma = \sqrt{\sum p_i(1-p_i)}$).
 
-### 5. Which inputs do we use, by bin?
+<!--### 5. Which inputs do we use, by bin?
 
 _Point to `docs/COLUMNS.md` and list here only the columns the method reads, each with its bin._
 
 **Our answer:**
 As audited in `docs/COLUMNS.md`, we strictly read Bin 1 columns (known on booking day and fixed): `hotel`, `lead_time`, `arrival_date_year`, `arrival_date_month`, `arrival_date_day_of_month`, `stays_in_weekend_nights`, `stays_in_week_nights`, `adults`, `children`, `meal`, `country`, `market_segment`, `distribution_channel`, `is_repeated_guest`, `previous_cancellations`, `previous_bookings_not_canceled`, `reserved_room_type`, `deposit_type`, `customer_type`, `adr`, and `total_of_special_requests`. All Bin 2 amendable columns (`agent`, `company`, `days_in_waiting_list`, `required_car_parking_spaces`) are excluded from MVP inputs. Bin 3 columns (`is_canceled`, `assigned_room_type`, `booking_changes`, `reservation_status`, `reservation_status_date`) are strictly quarantined as target leakage.
+-->
+### 5. Which inputs do we use, by bin?
+
+As audited in `docs/COLUMNS.md`, the MVP strictly uses **Bin 1 features** — information available at booking time and suitable for making predictions under real operational conditions.
+
+The approved Bin 1 inputs are:
+
+`hotel`, `lead_time`, `arrival_date_year`, `arrival_date_month`, `arrival_date_day_of_month`, `stays_in_weekend_nights`, `stays_in_week_nights`, `adults`, `children`, `meal`, `country`, `market_segment`, `distribution_channel`, `is_repeated_guest`, `previous_cancellations`, `previous_bookings_not_canceled`, `reserved_room_type`, `deposit_type`, `customer_type`, and `adr`.
+
+**`total_of_special_requests` is classified as Bin 2 and excluded from the MVP feature set**, because the number of special requests may change after the initial booking. Using it could introduce information that would not reliably be available at prediction time.
+
+Bin 2 features are excluded from the strict MVP inputs. Bin 3 features, including cancellation outcomes and post-booking reservation information, are quarantined to prevent target leakage.
+
+This ensures that model predictions rely only on information available at the intended decision point.
 
 ### 6. Where do the numbers come from, and how is the buffer set and frozen?
 
