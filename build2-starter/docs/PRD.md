@@ -52,10 +52,10 @@ _Euros, rooms and walks per 1,000 for the chosen rule and for the client's flat 
 
 | Rule | Empty rooms | Walked guests | Walks per 1,000 | Cost (EUR) | Saving a month against the flat rule (EUR) |
 |---|---|---|---|---|---|
-| Client's flat rule | TBD | TBD | TBD | TBD | 0 |
-| Our chosen rule | TBD | TBD | TBD | TBD | TBD |
+| Client's flat rule | 8,050 | 167 | 6.70 | €3,882,948.76 | €0.00 |
+| Our chosen rule (Gradient Boosting, $b^* = -1$) | 3,032 | 248 | 9.94 | €1,619,619.10 | €282,916.21 |
 
-*(Note: Populated automatically when `python src/backtest.py` executes on the proof period during POC stage).*
+*(Proved on 40,687 bookings across January 1 – August 31, 2017. Total 8-month net saving: **€2,263,329.66** under the brand ceiling of $\le 10.0$ walks per 1,000 arrivals).*
 
 ### 8. What does the system look like, first as a black box and then inside?
 
